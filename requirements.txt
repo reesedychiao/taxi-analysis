@@ -1,0 +1,38 @@
+# Data processing / storage
+pandas==2.3.3
+pyarrow==24.0.0
+pyspark==3.5.6
+duckdb==1.5.4
+
+# Data validation
+great_expectations==1.18.2
+
+# Modeling
+scikit-learn==1.9.0
+lightgbm==4.6.0           # requires the `libomp` Homebrew package on macOS
+xgboost==3.2.0
+mapie==1.4.1
+
+# Causal inference
+statsmodels==0.14.6
+linearmodels==7.0
+
+# Spatial (zone shapefile + CRZ boundary joins)
+geopandas==1.1.4
+shapely==2.1.2
+
+# Visualization / dashboard
+plotly==6.9.0
+matplotlib==3.11.0
+streamlit==1.59.1
+
+# Experiment tracking
+mlflow==3.14.0
+
+# API
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
+
+# Utilities / testing
+requests==2.34.2
+pytest==9.1.1

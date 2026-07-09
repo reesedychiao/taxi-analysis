@@ -10,3 +10,14 @@ This project addresses both, on top of the same NYC TLC trip data:
 
 1. A **driver earnings optimizer** that forecasts hourly demand and fares by taxi zone and turns that forecast into a ranked, uncertainty-aware recommendation of where to drive next.
 2. A **congestion pricing impact study** that uses causal-inference methods (difference-in-differences, interrupted time series) to produce a statistically defensible answer to the CRZ toll's effect on demand, revenue, and trip patterns.
+
+## Environment Setup
+
+**Steps**
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+Run project code with `.venv/bin/python`, or `source .venv/bin/activate` first.
