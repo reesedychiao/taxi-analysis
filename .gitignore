@@ -1,3 +1,6 @@
 blueprint.md
 .claude
 .venv
+data/raw/
+data/processed/
+data/features/
