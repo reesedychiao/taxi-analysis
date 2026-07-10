@@ -4,3 +4,6 @@ blueprint.md
 data/raw/
 data/processed/
 data/features/
+__pycache__/
+*.pyc
+.pytest_cache/
