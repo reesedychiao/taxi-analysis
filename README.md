@@ -40,3 +40,13 @@ python3.11 -m venv .venv
 ```
 
 Run project code with `.venv/bin/python`, or `source .venv/bin/activate` first.
+
+**Experiment tracking (MLflow)**
+
+To view runs:
+
+```bash
+.venv/bin/mlflow ui --backend-store-uri "sqlite:///mlflow.db"
+```
+
+Then open http://127.0.0.1:5000. Any code that logs runs should call `mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)` first, rather than relying on MLflow's default.

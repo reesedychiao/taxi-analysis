@@ -15,6 +15,10 @@ CRZ_BOUNDARY_PATH = RAW_DIR / "mta_crz.geojson"
 
 EXCLUDED_ZONE_IDS = {264, 265}
 
+MLFLOW_TRACKING_URI = f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
+
+DUCKDB_PATH = PROJECT_ROOT / "warehouse.duckdb"
+
 CRZ_START_DATE = date(2025, 1, 5)
 
 STUDY_START_DATE = date(2023, 1, 1)
