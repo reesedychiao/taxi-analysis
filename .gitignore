@@ -11,3 +11,4 @@ mlflow.db
 mlruns/
 mlartifacts/
 warehouse.duckdb
+plans/
