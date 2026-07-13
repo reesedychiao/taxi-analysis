@@ -45,23 +45,56 @@ def build_raw_trip_schema_suite() -> gx.ExpectationSuite:
     return suite
 
 
-def validate_month(parquet_path: Path):
-    context = gx.get_context(mode="ephemeral")
-    suite = context.suites.add(build_raw_trip_schema_suite())
+def build_raw_trip_validity_suite() -> gx.ExpectationSuite:
+    suite = gx.ExpectationSuite(name="raw_trip_validity")
 
+    for column in ("PULocationID", "DOLocationID"):
+        suite.add_expectation(gx.expectations.ExpectColumnValuesToBeBetween(column=column, min_value=1, max_value=265))
+
+    suite.add_expectation(gx.expectations.ExpectColumnValuesToBeBetween(column="fare_amount", min_value=0))
+    suite.add_expectation(gx.expectations.ExpectColumnValuesToBeBetween(column="trip_distance", min_value=0))
+
+    suite.add_expectation(
+        gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+            column_A="tpep_dropoff_datetime", column_B="tpep_pickup_datetime", or_equal=True
+        )
+    )
+
+    return suite
+
+
+def _get_batch(context: gx.data_context.AbstractDataContext, parquet_path: Path):
     data_source = context.data_sources.add_pandas(f"raw_trips_{parquet_path.stem}")
     asset = data_source.add_parquet_asset(parquet_path.stem, path=parquet_path)
-    batch = asset.add_batch_definition_whole_dataframe("whole_file").get_batch()
+    return asset.add_batch_definition_whole_dataframe("whole_file").get_batch()
 
+
+def validate_month(parquet_path: Path, suite_builder=build_raw_trip_schema_suite):
+    context = gx.get_context(mode="ephemeral")
+    suite = context.suites.add(suite_builder())
+    batch = _get_batch(context, parquet_path)
     return batch.validate(suite)
+
+
+def _print_result(label: str, result) -> bool:
+    print(f"{label}: success={result.success}  ({sum(r.success for r in result.results)}/{len(result.results)} expectations passed)")
+    for r in result.results:
+        if not r.success:
+            detail = r.result
+            if "unexpected_percent" in detail:
+                print(
+                    f"  FAILED: {r.expectation_config.type} {r.expectation_config.kwargs}"
+                    f" -> {detail['unexpected_count']}/{detail['element_count']} rows"
+                    f" ({detail['unexpected_percent']:.2f}%) violate this"
+                )
+            else:
+                print(f"  FAILED: {r.expectation_config.type} {r.expectation_config.kwargs}")
+    return result.success
 
 
 if __name__ == "__main__":
     target = sys.argv[1] if len(sys.argv) > 1 else "yellow_tripdata_2023-01.parquet"
-    result = validate_month(RAW_DIR / target)
-    print(f"success={result.success}  ({sum(r.success for r in result.results)}/{len(result.results)} expectations passed)")
-    if not result.success:
-        for r in result.results:
-            if not r.success:
-                print(" FAILED:", r.expectation_config.type, r.expectation_config.kwargs)
+    schema_ok = _print_result("schema", validate_month(RAW_DIR / target, build_raw_trip_schema_suite))
+    validity_ok = _print_result("validity", validate_month(RAW_DIR / target, build_raw_trip_validity_suite))
+    if not (schema_ok and validity_ok):
         sys.exit(1)
