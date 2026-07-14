@@ -3,11 +3,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import geopandas as gpd
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import broadcast, col, dayofweek, hour, month, to_utc_timestamp
 
 from cleaning.clean_trips import clean_trips
-from config import ZONE_LOOKUP_PATH
+from config import CRZ_BOUNDARY_PATH, ZONE_LOOKUP_PATH, ZONE_SHAPEFILE_PATH
 from ingestion.load_trips import load_all_raw_trips
 from utils.spark import get_spark_session
 
@@ -60,10 +61,29 @@ def join_zone_lookup(spark, df: DataFrame) -> DataFrame:
     return df.join(broadcast(zones), on="PULocationID", how="left")
 
 
+def compute_crz_zone_flags():
+    zones = gpd.read_file(str(ZONE_SHAPEFILE_PATH))
+    crz_union = gpd.read_file(str(CRZ_BOUNDARY_PATH)).to_crs(zones.crs).union_all()
+
+    overlap_fraction = zones.geometry.intersection(crz_union).area / zones.geometry.area
+    result = zones[["LocationID"]].rename(columns={"LocationID": "PULocationID"}).copy()
+    result["crz_overlap_fraction"] = overlap_fraction
+    result["is_crz_zone"] = result["crz_overlap_fraction"] > 0.5
+    return result
+
+
+def join_crz_flag(spark, df: DataFrame) -> DataFrame:
+    crz_flags = spark.createDataFrame(compute_crz_zone_flags()).select(
+        "PULocationID", col("is_crz_zone").alias("pickup_is_crz_zone")
+    )
+    return df.join(broadcast(crz_flags), on="PULocationID", how="left")
+
+
 def enrich_trips(spark, df: DataFrame) -> DataFrame:
     df = handle_nulls(df)
     df = add_time_features(df)
     df = join_zone_lookup(spark, df)
+    df = join_crz_flag(spark, df)
     return df
 
 
@@ -71,10 +91,13 @@ if __name__ == "__main__":
     spark = get_spark_session("enrich-trips-smoke-test")
     df = enrich_trips(spark, clean_trips(load_all_raw_trips(spark)))
     print("unmatched pickup zones (should be 0):", df.filter(col("pickup_borough").isNull()).count())
+    print("unmatched CRZ flags (should be 0):", df.filter(col("pickup_is_crz_zone").isNull()).count())
+    print("CRZ zone count:", compute_crz_zone_flags()["is_crz_zone"].sum(), "/ 263")
     df.select(
         "PULocationID",
         "pickup_borough",
         "pickup_zone_name",
+        "pickup_is_crz_zone",
         "pickup_hour",
         "pickup_weekday",
         "pickup_is_weekend",
