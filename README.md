@@ -51,6 +51,17 @@ To view runs:
 
 Then open http://127.0.0.1:5000. Any code that logs runs should call `mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)` first, rather than relying on MLflow's default.
 
+**Notebooks**
+
+Register the venv as a Jupyter kernel once, then launch normally:
+
+```bash
+.venv/bin/python -m ipykernel install --user --name=taxi-analysis --display-name="Python 3 (taxi-analysis)"
+.venv/bin/jupyter notebook notebooks/
+```
+
+Select the "Python 3 (taxi-analysis)" kernel so notebooks use this project's venv, not the system/Anaconda Python.
+
 ## ETL Pipeline: Raw → Processed
 
 Raw monthly parquet in `data/raw/` → one partitioned dataset at `data/processed/trips/`, built with PySpark (DuckDB is used separately, only as an independent spot-check).

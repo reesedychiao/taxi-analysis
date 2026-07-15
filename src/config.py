@@ -19,6 +19,10 @@ MLFLOW_TRACKING_URI = f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
 
 DUCKDB_PATH = PROJECT_ROOT / "warehouse.duckdb"
 
+WEATHER_PATH = PROCESSED_DIR / "weather.parquet"
+NYC_LATITUDE = 40.7128
+NYC_LONGITUDE = -74.0060
+
 CRZ_START_DATE = date(2025, 1, 5)
 
 STUDY_START_DATE = date(2023, 1, 1)

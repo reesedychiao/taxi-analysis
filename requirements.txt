@@ -36,3 +36,9 @@ uvicorn[standard]==0.51.0
 # Utilities / testing
 requests==2.34.2
 pytest==9.1.1
+
+# Notebooks (EDA)
+jupyter==1.1.1
+notebook==7.6.0
+ipykernel==7.3.0
+nbconvert==7.17.1
