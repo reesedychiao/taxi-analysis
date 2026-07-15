@@ -50,3 +50,17 @@ To view runs:
 ```
 
 Then open http://127.0.0.1:5000. Any code that logs runs should call `mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)` first, rather than relying on MLflow's default.
+
+## ETL Pipeline: Raw → Processed
+
+Raw monthly parquet in `data/raw/` → one partitioned dataset at `data/processed/trips/`, built with PySpark (DuckDB is used separately, only as an independent spot-check).
+
+- **Ingestion** (`src/ingestion/`) — `validate_raw.py` diagnostically checks each raw month against two GX suites (schema + validity); caught real drift across 2023→2025+ files. `load_trips.py` loads and harmonizes every month into **147,201,830 raw rows**.
+- **Cleaning & enrichment** (`src/cleaning/`) — `clean_trips.py` drops invalid zone IDs, negative fare/distance, dropoff-before-pickup, and out-of-window timestamps → **141,606,032 rows (3.80% dropped)**. `enrich_trips.py` fills nulls (documented per-column, never row drops), derives `pickup_hour`/`weekday`/`month`/`year`/`is_weekend` + `post_congestion_pricing`, and joins zone/borough names plus a geopandas-derived `pickup_is_crz_zone` flag. `write_processed.py` writes it partitioned by `pickup_year`/`pickup_month` → **230 files, ~20MB avg, 4.6GB**. `validate_processed.py` is a hard gate (20/20 checks must pass) via GX's Spark datasource.
+- **Independent verification** (`src/analytics/`) — `spot_check_processed.py` re-derives row counts, partitions, and the CRZ flag via DuckDB, deliberately a different engine than the pipeline itself.
+
+```bash
+.venv/bin/python src/cleaning/write_processed.py       # ingestion + cleaning + enrichment, writes output
+.venv/bin/python src/cleaning/validate_processed.py    # gate: exits non-zero on failure
+.venv/bin/python src/analytics/spot_check_processed.py # independent DuckDB re-check
+```
