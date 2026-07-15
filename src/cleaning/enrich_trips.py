@@ -5,10 +5,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import geopandas as gpd
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import broadcast, col, dayofweek, hour, month, to_utc_timestamp
+from pyspark.sql.functions import broadcast, col, dayofweek, hour, month, to_utc_timestamp, year
 
 from cleaning.clean_trips import clean_trips
-from config import CRZ_BOUNDARY_PATH, ZONE_LOOKUP_PATH, ZONE_SHAPEFILE_PATH
+from config import CRZ_BOUNDARY_PATH, CRZ_START_DATE, ZONE_LOOKUP_PATH, ZONE_SHAPEFILE_PATH
 from ingestion.load_trips import load_all_raw_trips
 from utils.spark import get_spark_session
 
@@ -38,6 +38,7 @@ def add_time_features(df: DataFrame) -> DataFrame:
     df = (
         df.withColumn("pickup_hour", hour(col("tpep_pickup_datetime")))
         .withColumn("pickup_weekday", dayofweek(col("tpep_pickup_datetime")))
+        .withColumn("pickup_year", year(col("tpep_pickup_datetime")))
         .withColumn("pickup_month", month(col("tpep_pickup_datetime")))
         .withColumn("pickup_is_weekend", col("pickup_weekday").isin(*WEEKEND_DAYOFWEEK_VALUES))
     )
@@ -45,6 +46,8 @@ def add_time_features(df: DataFrame) -> DataFrame:
     df = df.withColumn(
         "tpep_pickup_datetime_utc", to_utc_timestamp(col("tpep_pickup_datetime"), NYC_TZ)
     ).withColumn("tpep_dropoff_datetime_utc", to_utc_timestamp(col("tpep_dropoff_datetime"), NYC_TZ))
+
+    df = df.withColumn("post_congestion_pricing", col("tpep_pickup_datetime") >= str(CRZ_START_DATE))
 
     return df
 
@@ -101,5 +104,7 @@ if __name__ == "__main__":
         "pickup_hour",
         "pickup_weekday",
         "pickup_is_weekend",
+        "post_congestion_pricing",
     ).show(10, truncate=False)
+    df.groupBy("post_congestion_pricing").count().show()
     spark.stop()
